@@ -4,6 +4,7 @@ const { getDB } = require('../config/db');
 const { JWT_SECRET, JWT_EXPIRES_IN, JWT_REFRESH_SECRET, JWT_REFRESH_EXPIRES_IN } = require('../config/env');
 const { generateId } = require('../utils/helpers');
 const { logActivity } = require('../middleware/errorHandler');
+const logger = require('../utils/logger');
 
 const generateTokens = (user) => {
   const payload = { id: user.id, username: user.username, role: user.role_name };
@@ -69,7 +70,14 @@ const login = async (req, res, next) => {
       data: { user: userData, accessToken, refreshToken },
     });
   } catch (err) {
-    next(err);
+    // Log error and return a helpful response in non-production for debugging
+    logger.error({ message: err.message, stack: err.stack, path: req.path, method: req.method });
+    try { console.error(err.stack || err); } catch (e) { /* ignore */ }
+    return res.status(500).json({
+      success: false,
+      message: process.env.NODE_ENV === 'production' ? 'Internal Server Error' : err.message,
+      ...(process.env.NODE_ENV === 'production' ? {} : { stack: err.stack }),
+    });
   }
 };
 
