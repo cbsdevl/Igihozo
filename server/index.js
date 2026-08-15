@@ -27,12 +27,35 @@ const corsOrigins = [
   'http://localhost:3000',
 ].filter(Boolean);
 
-app.use(cors({
-  origin: corsOrigins,
+// CORS options with a function origin callback so we can allow additional
+// debug fallback via the `CORS_ALLOW_ALL` env var without opening production
+// to all origins by default.
+const corsOptions = {
+  origin: function (origin, callback) {
+    // Allow non-browser requests (e.g. server-to-server, curl) when no origin
+    if (!origin) return callback(null, true);
+
+    if (corsOrigins.includes(origin)) return callback(null, true);
+
+    // Temporary debug override: set CORS_ALLOW_ALL=true in Render env to allow any origin
+    if (process.env.CORS_ALLOW_ALL === 'true') return callback(null, true);
+
+    return callback(new Error('Not allowed by CORS'));
+  },
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization'],
-}));
+};
+
+// Use the cors middleware but catch rejected origins and return a clear JSON 403
+app.use((req, res, next) => {
+  cors(corsOptions)(req, res, (err) => {
+    if (err) {
+      return res.status(403).json({ success: false, message: 'CORS not allowed' });
+    }
+    next();
+  });
+});
 
 // ── Performance ────────────────────────────────────────────────────
 app.use(compression());
