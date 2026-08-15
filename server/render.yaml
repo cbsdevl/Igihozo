@@ -4,7 +4,7 @@
 # Docs: https://render.com/docs/blueprint-spec
 #
 # HOW TO USE:
-#   1. Push this repo to GitHub
+#   1. Place this file at the ROOT of your repository (next to /client & /server)
 #   2. Go to https://dashboard.render.com → New → Blueprint
 #   3. Connect your GitHub repo — Render will read this file automatically
 #   4. Fill in the SECRET environment variables in the Render dashboard:
@@ -19,19 +19,20 @@ services:
   - type: web
     name: gihozo-api
     runtime: node
-    region: frankfurt        # closest to Africa/Kigali — change if preferred
-    plan: free               # upgrade to starter for persistent disk + no sleep
+    nodeVersion: 20.19.4      # ← REQUIRED: better-sqlite3 native bindings break on Node 24
+    region: frankfurt         # closest to Africa/Kigali — change if preferred
+    plan: free                # upgrade to starter for persistent disk + no sleep
 
-    # Where Render looks for server code
+    # rootDir is relative to the repo root
     rootDir: server
 
-    # Build step: install production deps only
+    # Build: install production dependencies only
     buildCommand: npm install --omit=dev
 
     # Start command
     startCommand: node index.js
 
-    # Health-check endpoint (Render uses this to know the service is up)
+    # Render uses this to verify the service started correctly
     healthCheckPath: /api/health
 
     # ── Environment Variables ────────────────────────────────────────────────
@@ -42,14 +43,14 @@ services:
       - key: PORT
         value: 5000
 
-      # ⚠️  Set CLIENT_URL to your Render Static Site URL after first deploy
+      # ⚠️  Update to your actual Render Static Site URL after first deploy
       # Example: https://gihozo-web.onrender.com
       - key: CLIENT_URL
-        value: https://gihozo-web.onrender.com   # ← update this
+        value: https://gihozo-web.onrender.com
 
-      # JWT Secrets — set these in the Render dashboard (never commit values)
+      # JWT Secrets — sync:false means Render will prompt you for values in dashboard
       - key: JWT_SECRET
-        sync: false          # tells Render to prompt you for the value
+        sync: false
 
       - key: JWT_REFRESH_SECRET
         sync: false
@@ -60,9 +61,8 @@ services:
       - key: JWT_REFRESH_EXPIRES_IN
         value: 7d
 
-      # SQLite DB path — stored on the ephemeral disk for free tier
-      # For persistence across deploys, attach a Render Disk (paid) and set:
-      #   DB_PATH: /data/gihozo.db
+      # SQLite path (relative to server/ rootDir)
+      # For data persistence across deploys → attach a Render Disk (paid) and use /data/gihozo.db
       - key: DB_PATH
         value: ./database/gihozo.db
 
@@ -72,8 +72,8 @@ services:
       - key: APP_VERSION
         value: 1.0.0
 
-      # Render sets this automatically — used by the cron job keep-alive ping
-      # Do NOT set RENDER_EXTERNAL_URL manually; Render handles it.
+      # RENDER_EXTERNAL_URL is injected automatically by Render — do NOT set it manually.
+      # The cron job reads it to ping the correct public URL.
 
   # ── Frontend (React + Vite Static Site) ────────────────────────────────────
   - type: web
@@ -83,20 +83,19 @@ services:
 
     rootDir: client
 
-    # Build step: install deps + Vite production build
-    # Vite automatically loads .env.production during this step
+    # Vite automatically loads client/.env.production during this build
     buildCommand: npm install && npm run build
 
-    # Output directory that Vite writes to
+    # Vite output directory
     staticPublishPath: dist
 
-    # SPA routing: all paths fall back to index.html
+    # SPA routing: all routes fall back to index.html
     routes:
       - type: rewrite
         source: /*
         destination: /index.html
 
-    # Headers for security and caching
+    # Security & caching headers
     headers:
       - path: /assets/*
         name: Cache-Control
