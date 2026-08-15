@@ -51,6 +51,7 @@ const corsOptions = {
 app.use((req, res, next) => {
   cors(corsOptions)(req, res, (err) => {
     if (err) {
+      logger.warn('CORS rejected request', { origin: req.headers.origin || null, allowedOrigins: corsOrigins });
       return res.status(403).json({ success: false, message: 'CORS not allowed' });
     }
     next();
