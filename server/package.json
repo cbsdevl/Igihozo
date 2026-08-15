@@ -7,8 +7,8 @@
     "node": ">=20.0.0 <21.0.0"
   },
   "scripts": {
-    "start": "node index.js",
-    "dev": "nodemon index.js",
+    "start": "node start.js",
+    "dev": "nodemon start.js",
     "migrate": "node database/migrate.js",
     "seed": "node database/seed.js",
     "build": "npm install"
