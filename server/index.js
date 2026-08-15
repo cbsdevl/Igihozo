@@ -96,6 +96,30 @@ app.get('/api/health', (req, res) => {
   res.json({ status: 'ok', app: 'Gihozo PMS', version: '1.0.0', timestamp: new Date().toISOString() });
 });
 
+// Development-only DB debug endpoint — helps confirm DB path and connectivity
+if (NODE_ENV !== 'production') {
+  const { getDB } = require('./config/db');
+  app.get('/api/debug/db', (req, res) => {
+    try {
+      const db = getDB();
+      const dbPath = require('path').resolve(__dirname, process.env.DB_PATH || '../../database/gihozo.db');
+      // try a simple query
+      let userCount = 0;
+      try {
+        const row = db.prepare('SELECT COUNT(*) as c FROM users').get();
+        userCount = row ? row.c : 0;
+      } catch (e) {
+        // ignore — likely table missing
+      }
+
+      return res.json({ success: true, dbPath, driver: db && db.prepare ? 'ok' : 'unknown', userCount });
+    } catch (err) {
+      console.error('DB debug failed:', err.stack || err);
+      return res.status(500).json({ success: false, message: 'DB connection failed', error: err.message });
+    }
+  });
+}
+
 // ── 404 ────────────────────────────────────────────────────────────
 app.use('*', (req, res) => {
   res.status(404).json({ success: false, message: `Route not found: ${req.method} ${req.originalUrl}` });

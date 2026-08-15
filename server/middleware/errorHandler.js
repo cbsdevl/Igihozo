@@ -12,6 +12,14 @@ const errorHandler = (err, req, res, next) => {
     user: req.user?.id,
   });
 
+  // Also print to stdout/stderr so hosting providers (Render) capture the stack
+  // in their real-time logs even when `NODE_ENV=production`.
+  try {
+    console.error('Unhandled error:', err.stack || err);
+  } catch (e) {
+    // ignore
+  }
+
   const statusCode = err.statusCode || 500;
   const message = err.message || 'Internal Server Error';
 
