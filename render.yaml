@@ -1,0 +1,109 @@
+# render.yaml — Gihozo Pharmacy Management System
+# ─────────────────────────────────────────────────────────────────────────────
+# Infrastructure-as-code for Render.com
+# Docs: https://render.com/docs/blueprint-spec
+#
+# HOW TO USE:
+#   1. Push this repo to GitHub
+#   2. Go to https://dashboard.render.com → New → Blueprint
+#   3. Connect your GitHub repo — Render will read this file automatically
+#   4. Fill in the SECRET environment variables in the Render dashboard:
+#        - JWT_SECRET
+#        - JWT_REFRESH_SECRET
+#   5. Deploy!
+# ─────────────────────────────────────────────────────────────────────────────
+
+services:
+
+  # ── Backend API (Express + SQLite) ─────────────────────────────────────────
+  - type: web
+    name: gihozo-api
+    runtime: node
+    region: frankfurt        # closest to Africa/Kigali — change if preferred
+    plan: free               # upgrade to starter for persistent disk + no sleep
+
+    # Where Render looks for server code
+    rootDir: server
+
+    # Build step: install production deps only
+    buildCommand: npm install --omit=dev
+
+    # Start command
+    startCommand: node index.js
+
+    # Health-check endpoint (Render uses this to know the service is up)
+    healthCheckPath: /api/health
+
+    # ── Environment Variables ────────────────────────────────────────────────
+    envVars:
+      - key: NODE_ENV
+        value: production
+
+      - key: PORT
+        value: 5000
+
+      # ⚠️  Set CLIENT_URL to your Render Static Site URL after first deploy
+      # Example: https://gihozo-web.onrender.com
+      - key: CLIENT_URL
+        value: https://gihozo-web.onrender.com   # ← update this
+
+      # JWT Secrets — set these in the Render dashboard (never commit values)
+      - key: JWT_SECRET
+        sync: false          # tells Render to prompt you for the value
+
+      - key: JWT_REFRESH_SECRET
+        sync: false
+
+      - key: JWT_EXPIRES_IN
+        value: 15m
+
+      - key: JWT_REFRESH_EXPIRES_IN
+        value: 7d
+
+      # SQLite DB path — stored on the ephemeral disk for free tier
+      # For persistence across deploys, attach a Render Disk (paid) and set:
+      #   DB_PATH: /data/gihozo.db
+      - key: DB_PATH
+        value: ./database/gihozo.db
+
+      - key: APP_NAME
+        value: Gihozo Pharmacy
+
+      - key: APP_VERSION
+        value: 1.0.0
+
+      # Render sets this automatically — used by the cron job keep-alive ping
+      # Do NOT set RENDER_EXTERNAL_URL manually; Render handles it.
+
+  # ── Frontend (React + Vite Static Site) ────────────────────────────────────
+  - type: web
+    name: gihozo-web
+    runtime: static
+    region: frankfurt
+
+    rootDir: client
+
+    # Build step: install deps + Vite production build
+    # Vite automatically loads .env.production during this step
+    buildCommand: npm install && npm run build
+
+    # Output directory that Vite writes to
+    staticPublishPath: dist
+
+    # SPA routing: all paths fall back to index.html
+    routes:
+      - type: rewrite
+        source: /*
+        destination: /index.html
+
+    # Headers for security and caching
+    headers:
+      - path: /assets/*
+        name: Cache-Control
+        value: public, max-age=31536000, immutable
+      - path: /*
+        name: X-Frame-Options
+        value: DENY
+      - path: /*
+        name: X-Content-Type-Options
+        value: nosniff

@@ -1,0 +1,22 @@
+# Dependencies
+node_modules/
+
+# Environment secrets — NEVER commit these
+.env
+.env.local
+
+# SQLite database files (use Render Disk or keep out of git)
+*.db
+*.db-shm
+*.db-wal
+
+# Logs
+logs/
+*.log
+
+# Uploads / user files
+uploads/
+
+# OS
+.DS_Store
+Thumbs.db
