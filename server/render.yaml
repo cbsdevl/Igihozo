@@ -46,7 +46,7 @@ services:
       # ⚠️  Update to your actual Render Static Site URL after first deploy
       # Example: https://gihozo-web.onrender.com
       - key: CLIENT_URL
-        value: https://gihozo-web.onrender.com
+        value: https://igihozo.onrender.com
 
       # JWT Secrets — sync:false means Render will prompt you for values in dashboard
       - key: JWT_SECRET
